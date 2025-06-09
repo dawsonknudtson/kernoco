@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
+import AuthModal from './AuthModal';
 
 const Landing = () => {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const openAuthModal = () => setIsAuthModalOpen(true);
+  const closeAuthModal = () => setIsAuthModalOpen(false);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -14,6 +20,7 @@ const Landing = () => {
               width={40}
               height={40}
               className="rounded-lg"
+              priority
             />
             <span className="text-2xl font-bold text-blue-600">Kernoco</span>
           </div>
@@ -27,7 +34,10 @@ const Landing = () => {
             <a href="#about" className="text-gray-600 hover:text-blue-600 transition-colors">
               About
             </a>
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <button 
+              onClick={openAuthModal}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
               Get Started
             </button>
           </div>
@@ -46,7 +56,10 @@ const Landing = () => {
             Turn every meeting into structured, trackable tasks on a collaborative board.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg">
+            <button 
+              onClick={openAuthModal}
+              className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+            >
               Start Free Trial
             </button>
             <button className="border-2 border-blue-600 text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-50 transition-colors">
@@ -118,7 +131,10 @@ const Landing = () => {
             Join thousands of teams using Kernoco to turn conversations into results.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <button className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg">
+            <button 
+              onClick={openAuthModal}
+              className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+            >
               Start Your Free Trial
             </button>
             <span className="text-gray-500">No credit card required</span>
@@ -151,6 +167,9 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
     </div>
   );
 };
