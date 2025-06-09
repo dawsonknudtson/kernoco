@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_AI_SERVICE_URL=http://ai-service:8001
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+      - ai-service
+    networks:
+      - kernoco-network
+
+  # Backend (Node.js/Express)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/kernoco
+      - AI_SERVICE_URL=http://ai-service:8001
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - ai-service
+    networks:
+      - kernoco-network
+
+  # AI Service (Python/FastAPI)
+  ai-service:
+    build:
+      context: ./ai
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/kernoco
+    volumes:
+      - ./ai:/app
+    depends_on:
+      - postgres
+    networks:
+      - kernoco-network
+
+  # Database
+  postgres:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=kernoco
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./supabase/schemas:/docker-entrypoint-initdb.d
+    networks:
+      - kernoco-network
+
+  # Redis (for caching/sessions if needed)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - kernoco-network
+
+volumes:
+  postgres_data:
+
+networks:
+  kernoco-network:
+    driver: bridge 
