@@ -15,8 +15,12 @@ export default function AuthCallback() {
           console.error('Error getting session:', error);
         }
         
-        // Redirect to homepage regardless of success/failure (for now)
-        router.push('/');
+        // Redirect to dashboard if session exists, otherwise homepage
+        if (data.session) {
+          router.push('/dashboard');
+        } else {
+          router.push('/');
+        }
       } catch (err) {
         console.error('Auth callback error:', err);
         router.push('/');

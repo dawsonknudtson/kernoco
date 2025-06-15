@@ -34,12 +34,9 @@ const AuthModal = ({ isOpen, onClose }) => {
         const result = await signUpUser(formData.email, formData.password, formData.confirmPassword);
         
         if (result.success) {
-          // signup successful - user needs to verify email
-          setError('Check your email for verification link');
-          setTimeout(() => {
-            onClose();
-            setError('');
-          }, 3000);
+          // signup successful - redirect to dashboard
+          onClose();
+          router.push('/dashboard');
         } else {
           setError(result.error);
         }
@@ -48,7 +45,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         
         if (result.success) {
           onClose();
-          router.push('./frontend/components/dashboard'); // redirect to dashboard or wherever
+          router.push('/dashboard');
         } else {
           setError(result.error);
         }
@@ -83,8 +80,8 @@ const AuthModal = ({ isOpen, onClose }) => {
 
       if (error) throw error;
       
-      // If successful, redirect to homepage
-      router.push('/');
+      // If successful, redirect to dashboard
+      router.push('/dashboard');
       onClose(); // Close the modal
     } catch (error) {
       console.error('Error signing in with Google:', error.message);

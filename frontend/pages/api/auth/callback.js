@@ -17,8 +17,8 @@ export default async function handler(req, res) {
         return res.redirect('/');
       }
 
-      // Successful authentication - redirect to homepage (for now)
-      return res.redirect('/');
+      // Successful authentication - redirect to dashboard
+      return res.redirect('/dashboard');
     } catch (err) {
       console.error('Callback error:', err);
       return res.redirect('/');
