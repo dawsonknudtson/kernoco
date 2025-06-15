@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { signUpUser, signInUser } from '../lib/auth';
 import { useRouter } from 'next/router';
 
 const AuthModal = ({ isOpen, onClose }) => {
@@ -11,6 +12,7 @@ const AuthModal = ({ isOpen, onClose }) => {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -18,12 +20,44 @@ const AuthModal = ({ isOpen, onClose }) => {
       ...prev,
       [name]: value
     }));
+    // clear error when user starts typing
+    if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log('Form submitted:', formData);
+    setLoading(true);
+    setError('');
+
+    try {
+      if (isSignUp) {
+        const result = await signUpUser(formData.email, formData.password, formData.confirmPassword);
+        
+        if (result.success) {
+          // signup successful - user needs to verify email
+          setError('Check your email for verification link');
+          setTimeout(() => {
+            onClose();
+            setError('');
+          }, 3000);
+        } else {
+          setError(result.error);
+        }
+      } else {
+        const result = await signInUser(formData.email, formData.password);
+        
+        if (result.success) {
+          onClose();
+          router.push('./frontend/components/dashboard'); // redirect to dashboard or wherever
+        } else {
+          setError(result.error);
+        }
+      }
+    } catch (err) {
+      setError('Something went wrong - please try again');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleMode = () => {
@@ -33,6 +67,8 @@ const AuthModal = ({ isOpen, onClose }) => {
       password: '',
       confirmPassword: ''
     });
+    setError('');
+    setLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
@@ -61,9 +97,13 @@ const AuthModal = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md relative">
-        {/* Error Message */}
+        {/* Error/Success Message */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 mx-4 mt-4">
+          <div className={`border px-4 py-3 rounded relative mb-4 mx-4 mt-4 ${
+            error.includes('Check your email') || error.includes('verification')
+              ? 'bg-green-100 border-green-400 text-green-700'
+              : 'bg-red-100 border-red-400 text-red-700'
+          }`}>
             <span className="block sm:inline">{error}</span>
           </div>
         )}
@@ -185,9 +225,17 @@ const AuthModal = ({ isOpen, onClose }) => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSignUp ? 'Create Account' : 'Sign In'}
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                </div>
+              ) : (
+                isSignUp ? 'Create Account' : 'Sign In'
+              )}
             </button>
           </form>
 
