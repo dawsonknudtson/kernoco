@@ -21,10 +21,8 @@ export default function Dashboard() {
     invitees: ['']
   });
   
-  // Mock data for demonstration
-  const [bookedMeetings] = useState([
-   
-  ]);
+  // Mock data for demonstration - now dynamic
+  const [bookedMeetings, setBookedMeetings] = useState([]);
 
   const [meetingInvitations] = useState([
     
@@ -150,11 +148,20 @@ export default function Dashboard() {
 
   // Handle form submission
   const handleCreateMeeting = () => {
-    console.log('Creating meeting:', {
-      ...meetingForm,
-      date: selectedDate
-    });
-    // This will be connected to backend later
+    const newMeeting = {
+      id: Date.now(), // Simple ID generation for demo
+      title: meetingForm.title,
+      time: meetingForm.time,
+      date: selectedDate,
+      description: meetingForm.description,
+      invitees: meetingForm.invitees.filter(email => email.trim() !== ''),
+      isOwner: true // User created this meeting
+    };
+    
+    // Add to booked meetings
+    setBookedMeetings(prev => [...prev, newMeeting]);
+    
+    console.log('Meeting created:', newMeeting);
     
     // Reset form
     setMeetingForm({
@@ -187,6 +194,37 @@ export default function Dashboard() {
       month: 'long', 
       day: 'numeric' 
     });
+  };
+
+  // Format meeting date for display
+  const formatMeetingDate = (date) => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return 'Tomorrow';
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+  };
+
+  // Handle joining a meeting
+  const handleJoinMeeting = (meetingId) => {
+    console.log('Joining meeting:', meetingId);
+    // This will be connected to video call functionality later
+  };
+
+  // Handle canceling a meeting from the list
+  const handleCancelBookedMeeting = (meetingId) => {
+    setBookedMeetings(prev => prev.filter(meeting => meeting.id !== meetingId));
+    console.log('Meeting canceled:', meetingId);
   };
 
   if (loading) {
@@ -465,23 +503,46 @@ export default function Dashboard() {
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Meetings</h3>
                   <div className="space-y-3">
-                    {bookedMeetings.map(meeting => (
-                      <div key={meeting.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                        <div>
-                          <h4 className="font-medium text-gray-900">{meeting.title}</h4>
-                          <p className="text-sm text-gray-600">{meeting.date} at {meeting.time}</p>
-                          <p className="text-xs text-gray-500">{meeting.participants} participants</p>
+                    {bookedMeetings.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">No upcoming meetings. Create one by clicking on a date!</p>
+                    ) : (
+                      bookedMeetings.map(meeting => (
+                        <div key={meeting.id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900">{meeting.title}</h4>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {formatMeetingDate(meeting.date)} at {meeting.time}
+                              </p>
+                              {meeting.description && (
+                                <p className="text-sm text-gray-500 mt-2">{meeting.description}</p>
+                              )}
+                              {meeting.invitees && meeting.invitees.length > 0 && (
+                                <p className="text-xs text-gray-400 mt-2">
+                                  Invitees: {meeting.invitees.join(', ')}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex space-x-2 ml-4">
+                              <button 
+                                onClick={() => handleJoinMeeting(meeting.id)}
+                                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                              >
+                                Join
+                              </button>
+                              {meeting.isOwner && (
+                                <button 
+                                  onClick={() => handleCancelBookedMeeting(meeting.id)}
+                                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex space-x-2">
-                          <button className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
-                            Join
-                          </button>
-                          <button className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-                            Details
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
 
