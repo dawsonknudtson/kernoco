@@ -10,6 +10,16 @@ export default function Dashboard() {
 
   // Calendar state
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [showMeetingForm, setShowMeetingForm] = useState(false);
+  
+  // Meeting form state
+  const [meetingForm, setMeetingForm] = useState({
+    title: '',
+    time: '',
+    description: '',
+    invitees: ['']
+  });
   
   // Mock data for demonstration
   const [bookedMeetings] = useState([
@@ -95,6 +105,88 @@ export default function Dashboard() {
   const handleInvitationResponse = (invitationId, response) => {
     console.log(`${response} invitation ${invitationId}`);
     // This will be connected to backend later
+  };
+
+  // Handle calendar date click
+  const handleDateClick = (day) => {
+    if (!day) return;
+    
+    const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    setSelectedDate(clickedDate);
+    setShowMeetingForm(true);
+  };
+
+  // Handle meeting form changes
+  const handleMeetingFormChange = (field, value) => {
+    setMeetingForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Add new invitee field
+  const addInviteeField = () => {
+    setMeetingForm(prev => ({
+      ...prev,
+      invitees: [...prev.invitees, '']
+    }));
+  };
+
+  // Remove invitee field
+  const removeInviteeField = (index) => {
+    setMeetingForm(prev => ({
+      ...prev,
+      invitees: prev.invitees.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Update specific invitee
+  const updateInvitee = (index, value) => {
+    setMeetingForm(prev => ({
+      ...prev,
+      invitees: prev.invitees.map((invitee, i) => i === index ? value : invitee)
+    }));
+  };
+
+  // Handle form submission
+  const handleCreateMeeting = () => {
+    console.log('Creating meeting:', {
+      ...meetingForm,
+      date: selectedDate
+    });
+    // This will be connected to backend later
+    
+    // Reset form
+    setMeetingForm({
+      title: '',
+      time: '',
+      description: '',
+      invitees: ['']
+    });
+    setShowMeetingForm(false);
+    setSelectedDate(null);
+  };
+
+  // Cancel meeting creation
+  const handleCancelMeeting = () => {
+    setMeetingForm({
+      title: '',
+      time: '',
+      description: '',
+      invitees: ['']
+    });
+    setShowMeetingForm(false);
+    setSelectedDate(null);
+  };
+
+  // Format selected date for display
+  const formatSelectedDate = (date) => {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
 
   if (loading) {
@@ -227,14 +319,19 @@ export default function Dashboard() {
                     {generateCalendarDays().map((day, index) => (
                       <div
                         key={index}
-                        className={`text-center py-2 text-sm ${
+                        onClick={() => handleDateClick(day)}
+                        className={`text-center py-2 text-sm cursor-pointer transition-colors ${
                           day === new Date().getDate() && 
                           currentDate.getMonth() === new Date().getMonth() &&
                           currentDate.getFullYear() === new Date().getFullYear()
                             ? 'bg-blue-600 text-white rounded-full'
+                            : selectedDate && day === selectedDate.getDate() &&
+                              currentDate.getMonth() === selectedDate.getMonth() &&
+                              currentDate.getFullYear() === selectedDate.getFullYear()
+                            ? 'bg-blue-100 text-blue-700 rounded-full'
                             : day 
-                            ? 'text-gray-900 hover:bg-gray-100 cursor-pointer rounded'
-                            : 'text-gray-300'
+                            ? 'text-gray-900 hover:bg-gray-100 rounded'
+                            : 'text-gray-300 cursor-default'
                         }`}
                       >
                         {day || ''}
@@ -242,6 +339,124 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </div>
+
+                {/* Meeting Creation Form */}
+                {showMeetingForm && selectedDate && (
+                  <div className="mt-6 bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-lg font-semibold text-gray-900">
+                        Create Meeting for {formatSelectedDate(selectedDate)}
+                      </h4>
+                      <button
+                        onClick={handleCancelMeeting}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Meeting Title */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Meeting Title *
+                        </label>
+                        <input
+                          type="text"
+                          value={meetingForm.title}
+                          onChange={(e) => handleMeetingFormChange('title', e.target.value)}
+                          placeholder="Enter meeting title"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      {/* Meeting Time */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Time *
+                        </label>
+                        <input
+                          type="time"
+                          value={meetingForm.time}
+                          onChange={(e) => handleMeetingFormChange('time', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Description
+                        </label>
+                        <textarea
+                          value={meetingForm.description}
+                          onChange={(e) => handleMeetingFormChange('description', e.target.value)}
+                          placeholder="Meeting description (optional)"
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      {/* Invitees */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Invite People
+                        </label>
+                        <div className="space-y-2">
+                          {meetingForm.invitees.map((invitee, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <input
+                                type="email"
+                                value={invitee}
+                                onChange={(e) => updateInvitee(index, e.target.value)}
+                                placeholder="Enter email address"
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                              {meetingForm.invitees.length > 1 && (
+                                <button
+                                  onClick={() => removeInviteeField(index)}
+                                  className="p-2 text-red-500 hover:text-red-700"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <button
+                            onClick={addInviteeField}
+                            className="flex items-center text-blue-600 hover:text-blue-800 text-sm"
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Add another person
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex justify-end space-x-3 pt-4 border-t">
+                        <button
+                          onClick={handleCancelMeeting}
+                          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleCreateMeeting}
+                          disabled={!meetingForm.title || !meetingForm.time}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Create Meeting
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Right Side Content */}
