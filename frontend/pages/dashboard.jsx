@@ -13,46 +13,11 @@ export default function Dashboard() {
   
   // Mock data for demonstration
   const [bookedMeetings] = useState([
-    {
-      id: 1,
-      title: "Team Standup",
-      time: "9:00 AM",
-      date: "Today",
-      participants: 5
-    },
-    {
-      id: 2,
-      title: "Client Review",
-      time: "2:00 PM", 
-      date: "Tomorrow",
-      participants: 3
-    },
-    {
-      id: 3,
-      title: "Sprint Planning",
-      time: "10:00 AM",
-      date: "Friday",
-      participants: 8
-    }
+   
   ]);
 
   const [meetingInvitations] = useState([
-    {
-      id: 1,
-      title: "Product Demo",
-      organizer: "Sarah Johnson",
-      time: "3:00 PM",
-      date: "Wednesday",
-      participants: 12
-    },
-    {
-      id: 2,
-      title: "Architecture Review",
-      organizer: "Mike Chen",
-      time: "11:00 AM",
-      date: "Thursday", 
-      participants: 6
-    }
+    
   ]);
 
   useEffect(() => {
