@@ -147,21 +147,46 @@ export default function Dashboard() {
   };
 
   // Handle form submission
-  const handleCreateMeeting = () => {
-    const newMeeting = {
-      id: Date.now(), // Simple ID generation for demo
-      title: meetingForm.title,
-      time: meetingForm.time,
-      date: selectedDate,
-      description: meetingForm.description,
-      invitees: meetingForm.invitees.filter(email => email.trim() !== ''),
-      isOwner: true // User created this meeting
-    };
-    
-    // Add to booked meetings
-    setBookedMeetings(prev => [...prev, newMeeting]);
-    
-    console.log('Meeting created:', newMeeting);
+  const handleCreateMeeting = async () => {
+    try {
+      // Create meeting on backend
+      const response = await fetch('http://localhost:3001/api/meetings/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: meetingForm.title,
+          description: meetingForm.description,
+          scheduledTime: `${selectedDate.toISOString().split('T')[0]}T${meetingForm.time}:00`,
+          createdBy: user?.id || user?.email
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const newMeeting = {
+          id: data.meeting.id,
+          title: data.meeting.title,
+          time: meetingForm.time,
+          date: selectedDate,
+          description: data.meeting.description,
+          invitees: meetingForm.invitees.filter(email => email.trim() !== ''),
+          isOwner: true,
+          roomId: data.meeting.roomId
+        };
+        
+        // Add to booked meetings
+        setBookedMeetings(prev => [...prev, newMeeting]);
+        
+        console.log('Meeting created:', newMeeting);
+      } else {
+        console.error('Failed to create meeting:', data.error);
+      }
+    } catch (error) {
+      console.error('Error creating meeting:', error);
+    }
     
     // Reset form
     setMeetingForm({
@@ -218,7 +243,7 @@ export default function Dashboard() {
   // Handle joining a meeting
   const handleJoinMeeting = (meetingId) => {
     console.log('Joining meeting:', meetingId);
-    // This will be connected to video call functionality later
+    router.push(`/meeting/${meetingId}`);
   };
 
   // Handle canceling a meeting from the list
