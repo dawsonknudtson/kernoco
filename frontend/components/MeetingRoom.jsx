@@ -22,9 +22,7 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
     initializeSocket();
     
     // Set up local video
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
+    setupLocalVideo();
 
     return () => {
       // Cleanup on unmount
@@ -37,6 +35,52 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
       }
     };
   }, []);
+
+  // Separate effect to handle local video setup
+  useEffect(() => {
+    setupLocalVideo();
+  }, [localStream]);
+
+  const setupLocalVideo = async () => {
+    if (localVideoRef.current && localStream) {
+      console.log('Setting up local video stream:', localStream);
+      localVideoRef.current.srcObject = localStream;
+      
+      // Ensure video tracks are enabled according to current state
+      const videoTrack = localStream.getVideoTracks()[0];
+      const audioTrack = localStream.getAudioTracks()[0];
+      
+      if (videoTrack) {
+        videoTrack.enabled = isVideoEnabled;
+        console.log('Video track enabled:', videoTrack.enabled);
+      }
+      if (audioTrack) {
+        audioTrack.enabled = isAudioEnabled;
+        console.log('Audio track enabled:', audioTrack.enabled);
+      }
+    } else {
+      console.log('Local video setup failed - missing ref or stream:', {
+        hasRef: !!localVideoRef.current,
+        hasStream: !!localStream,
+        streamTracks: localStream ? localStream.getTracks().length : 0
+      });
+      
+      // If no stream is available, try to get a new one
+      if (!localStream && localVideoRef.current) {
+        try {
+          console.log('Attempting to get new media stream...');
+          const newStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+          });
+          setLocalStream(newStream);
+          console.log('Successfully obtained new stream:', newStream);
+        } catch (error) {
+          console.error('Failed to get media stream:', error);
+        }
+      }
+    }
+  };
 
   const initializeSocket = () => {
     socketRef.current = io('http://localhost:3001');

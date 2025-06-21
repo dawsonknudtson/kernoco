@@ -86,13 +86,15 @@ export default function MeetingJoinScreen({ meetingId, onJoin, onCancel }) {
 
     setIsLoading(true);
     try {
+      const userId = `user_${Date.now()}`;
+      
       const response = await fetch(`http://localhost:3001/api/meetings/${meetingId}/join`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: `user_${Date.now()}`, // Simple user ID generation
+          userId: userId,
           userName: displayName.trim()
         })
       });
@@ -100,11 +102,14 @@ export default function MeetingJoinScreen({ meetingId, onJoin, onCancel }) {
       const data = await response.json();
       
       if (data.success) {
+        console.log('Joining meeting with stream:', stream);
+        console.log('Stream tracks:', stream ? stream.getTracks() : 'No stream');
+        
         // Pass the stream and user data to parent component
         onJoin({
           roomId: data.roomId,
           userName: displayName.trim(),
-          userId: `user_${Date.now()}`,
+          userId: userId,
           stream,
           isVideoEnabled,
           isAudioEnabled,
