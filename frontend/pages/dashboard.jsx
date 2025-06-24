@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getSession, signOutUser } from '../lib/auth';
+import MeetingHistoryCard from '../components/MeetingHistoryCard';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -23,6 +24,12 @@ export default function Dashboard() {
   
   // Mock data for demonstration - now dynamic
   const [bookedMeetings, setBookedMeetings] = useState([]);
+  
+  // Meeting history state
+  const [meetingHistory, setMeetingHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState('');
+  const [downloadingRecordings, setDownloadingRecordings] = useState(new Set());
 
   const [meetingInvitations] = useState([
     
@@ -31,6 +38,19 @@ export default function Dashboard() {
   useEffect(() => {
     checkUser();
   }, []);
+
+  useEffect(() => {
+    if (activeSection === 'history' && user) {
+      fetchMeetingHistory();
+      
+      // Set up auto-refresh for meeting history
+      const interval = setInterval(() => {
+        fetchMeetingHistory();
+      }, 30000); // Refresh every 30 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [activeSection, user]);
 
   const checkUser = async () => {
     try {
@@ -251,6 +271,63 @@ export default function Dashboard() {
     setBookedMeetings(prev => prev.filter(meeting => meeting.id !== meetingId));
     console.log('Meeting canceled:', meetingId);
   };
+
+  // Fetch meeting history with recordings
+  const fetchMeetingHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      setHistoryError('');
+      
+      const response = await fetch(`http://localhost:3001/api/meetings/recordings/history?userId=${user?.id || user?.email}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setMeetingHistory(data.recordings);
+      } else {
+        setHistoryError('Failed to load meeting history');
+      }
+    } catch (error) {
+      console.error('Error fetching meeting history:', error);
+      setHistoryError('Error loading meeting history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Download recording
+  const handleDownloadRecording = async (recordingId, filename) => {
+    try {
+      setDownloadingRecordings(prev => new Set([...prev, recordingId]));
+      
+      const response = await fetch(`http://localhost:3001/api/meetings/recordings/${recordingId}/download`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        throw new Error('Failed to download recording');
+      }
+    } catch (error) {
+      console.error('Error downloading recording:', error);
+      alert('Failed to download recording. Please try again.');
+    } finally {
+      setDownloadingRecordings(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(recordingId);
+        return newSet;
+      });
+    }
+  };
+
+
 
   if (loading) {
     return (
@@ -615,8 +692,51 @@ export default function Dashboard() {
 
         {activeSection === 'history' && (
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Meeting History</h2>
-            <p className="text-gray-600">Previous meeting history will be displayed here.</p>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Meeting History</h2>
+              <button
+                onClick={fetchMeetingHistory}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                Refresh
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-gray-600">Loading meeting history...</span>
+              </div>
+            ) : historyError ? (
+              <div className="text-center py-8">
+                <div className="text-red-600 mb-2">{historyError}</div>
+                <button
+                  onClick={fetchMeetingHistory}
+                  className="text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : meetingHistory.length === 0 ? (
+              <div className="text-center py-8">
+                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No recordings yet</h3>
+                <p className="text-gray-600">Meeting recordings will appear here after you've had meetings.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {meetingHistory.map((recording) => (
+                  <MeetingHistoryCard
+                    key={recording.id}
+                    recording={recording}
+                    onDownload={handleDownloadRecording}
+                    isDownloading={downloadingRecordings.has(recording.id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -16,6 +16,9 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   const [newMessage, setNewMessage] = useState('');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [localStream, setLocalStream] = useState(roomData.stream);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingStatus, setRecordingStatus] = useState('idle');
+  const [recordingInfo, setRecordingInfo] = useState(null);
 
   useEffect(() => {
     // Initialize socket connection
@@ -142,6 +145,55 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
     socketRef.current.on('user-media-state-change', (data) => {
       // Handle when other users turn on/off their video/audio
       console.log('User media state changed:', data);
+    });
+
+    // Recording event listeners
+    socketRef.current.on('recording-started', (data) => {
+      console.log('Recording started:', data);
+      setIsRecording(true);
+      setRecordingStatus('recording');
+      setRecordingInfo(data);
+      
+      // Show notification to all participants
+      setChatMessages(prev => [...prev, {
+        message: 'Meeting recording has started',
+        userName: 'System',
+        userId: 'system',
+        timestamp: new Date().toISOString(),
+        isSystemMessage: true
+      }]);
+    });
+
+    socketRef.current.on('recording-stopped', (data) => {
+      console.log('Recording stopped:', data);
+      setIsRecording(false);
+      setRecordingStatus('completed');
+      setRecordingInfo(data);
+      
+      // Show completion notification
+      setChatMessages(prev => [...prev, {
+        message: `Meeting recording completed (${formatDuration(data.duration)})`,
+        userName: 'System',
+        userId: 'system',
+        timestamp: new Date().toISOString(),
+        isSystemMessage: true
+      }]);
+    });
+
+    socketRef.current.on('recording-error', (data) => {
+      console.error('Recording error:', data);
+      setIsRecording(false);
+      setRecordingStatus('error');
+      
+      // Show error notification
+      setChatMessages(prev => [...prev, {
+        message: `Recording error: ${data.message}`,
+        userName: 'System',
+        userId: 'system',
+        timestamp: new Date().toISOString(),
+        isSystemMessage: true,
+        isError: true
+      }]);
     });
   };
 
@@ -372,17 +424,49 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
     });
   };
 
+  const formatDuration = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Header */}
       <div className="bg-gray-800 px-6 py-4 flex items-center justify-between">
         <div>
-          <h1 className="text-white font-semibold text-lg">
-            {roomData.meetingDetails?.title || 'Meeting'}
-          </h1>
+          <div className="flex items-center space-x-3">
+            <h1 className="text-white font-semibold text-lg">
+              {roomData.meetingDetails?.title || 'Meeting'}
+            </h1>
+            {isRecording && (
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-red-400 text-sm font-medium">Recording</span>
+              </div>
+            )}
+          </div>
           <p className="text-gray-300 text-sm">
             {participants.length + 1} participant{participants.length !== 0 ? 's' : ''}
           </p>
+          {isRecording && recordingInfo && (
+            <p className="text-gray-400 text-xs">
+              Recording started automatically • This meeting is being recorded
+            </p>
+          )}
         </div>
         <div className="flex items-center space-x-4">
           <button
@@ -471,16 +555,41 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
             
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {chatMessages.map((message, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-3">
+                <div key={index} className={`rounded-lg p-3 ${
+                  message.isSystemMessage 
+                    ? message.isError 
+                      ? 'bg-red-50 border border-red-200'
+                      : 'bg-blue-50 border border-blue-200'
+                    : 'bg-gray-50'
+                }`}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm text-gray-900">
+                    <span className={`font-medium text-sm ${
+                      message.isSystemMessage 
+                        ? message.isError 
+                          ? 'text-red-700'
+                          : 'text-blue-700'
+                        : 'text-gray-900'
+                    }`}>
                       {message.userName}
+                      {message.isSystemMessage && (
+                        <svg className="w-4 h-4 inline-block ml-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      )}
                     </span>
                     <span className="text-xs text-gray-500">
                       {formatTime(message.timestamp)}
                     </span>
                   </div>
-                  <p className="text-gray-700 text-sm">{message.message}</p>
+                  <p className={`text-sm ${
+                    message.isSystemMessage 
+                      ? message.isError 
+                        ? 'text-red-600'
+                        : 'text-blue-600'
+                      : 'text-gray-700'
+                  }`}>
+                    {message.message}
+                  </p>
                 </div>
               ))}
             </div>

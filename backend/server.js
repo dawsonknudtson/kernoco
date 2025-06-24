@@ -32,6 +32,10 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Import routes
 const meetingRoutes = require('./routes/meetings');
+const RecordingManager = require('./utils/recordingManager');
+
+// Initialize recording manager
+const recordingManager = new RecordingManager();
 
 // Use routes
 app.use('/api/meetings', meetingRoutes);
@@ -44,7 +48,7 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   // User joins a meeting room
-  socket.on('join-meeting', (data) => {
+  socket.on('join-meeting', async (data) => {
     const { roomId, userId, userName } = data;
     
     socket.join(roomId);
@@ -56,7 +60,29 @@ io.on('connection', (socket) => {
     if (!meetingRooms.has(roomId)) {
       meetingRooms.set(roomId, new Set());
     }
+    const wasEmpty = meetingRooms.get(roomId).size === 0;
     meetingRooms.get(roomId).add(socket.id);
+    
+    // Start recording if this is the first participant
+    if (wasEmpty) {
+      try {
+        const recordingResult = await recordingManager.startRecording(roomId);
+        if (recordingResult.success) {
+          io.to(roomId).emit('recording-started', {
+            recordingId: recordingResult.recordingId,
+            filename: recordingResult.filename,
+            startedBy: 'system'
+          });
+          console.log(`Recording started automatically for room ${roomId}`);
+        }
+      } catch (error) {
+        console.error('Error starting automatic recording:', error);
+        io.to(roomId).emit('recording-error', {
+          error: 'Failed to start recording',
+          message: 'Recording could not be started for this meeting'
+        });
+      }
+    }
     
     // Notify others in the room
     socket.to(roomId).emit('user-joined', {
@@ -124,7 +150,7 @@ io.on('connection', (socket) => {
   });
 
   // Handle disconnect
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     const user = connectedUsers.get(socket.id);
     if (user) {
       const { roomId, userId, userName } = user;
@@ -132,7 +158,66 @@ io.on('connection', (socket) => {
       // Remove from meeting room
       if (meetingRooms.has(roomId)) {
         meetingRooms.get(roomId).delete(socket.id);
+        
+        // Stop recording if this was the last participant
         if (meetingRooms.get(roomId).size === 0) {
+          try {
+            // Call the recording stop endpoint to ensure all metadata is properly stored
+            const stopRecordingResponse = await fetch(`http://localhost:3001/api/meetings/${roomId}/recordings/stop`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: 'system'
+              })
+            });
+            
+            if (stopRecordingResponse.ok) {
+              const recordingResult = await stopRecordingResponse.json();
+              if (recordingResult.success) {
+                io.to(roomId).emit('recording-stopped', {
+                  recordingId: recordingResult.recordingId,
+                  filename: recordingResult.filename,
+                  duration: recordingResult.duration,
+                  fileSize: recordingResult.fileSize,
+                  status: recordingResult.status
+                });
+                console.log(`Recording stopped automatically for room ${roomId}`);
+              }
+            } else {
+              // Fallback to direct recording manager call
+              const recordingResult = await recordingManager.stopRecording(roomId);
+              if (recordingResult.success) {
+                io.to(roomId).emit('recording-stopped', {
+                  recordingId: recordingResult.recordingId,
+                  filename: recordingResult.filename,
+                  duration: recordingResult.duration,
+                  fileSize: recordingResult.fileSize,
+                  status: recordingResult.status
+                });
+                console.log(`Recording stopped automatically for room ${roomId}`);
+              }
+            }
+          } catch (error) {
+            console.error('Error stopping automatic recording:', error);
+            // Try direct recording manager as fallback
+            try {
+              const recordingResult = await recordingManager.stopRecording(roomId);
+              if (recordingResult.success) {
+                io.to(roomId).emit('recording-stopped', {
+                  recordingId: recordingResult.recordingId,
+                  filename: recordingResult.filename,
+                  duration: recordingResult.duration,
+                  fileSize: recordingResult.fileSize,
+                  status: recordingResult.status
+                });
+              }
+            } catch (fallbackError) {
+              console.error('Fallback recording stop also failed:', fallbackError);
+            }
+          }
+          
           meetingRooms.delete(roomId);
         }
       }
