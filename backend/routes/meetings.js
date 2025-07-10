@@ -2,11 +2,9 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
-// In-memory storage for meetings (in production, use a database)
 const meetings = new Map();
 const activeMeetings = new Map();
 
-// Create a new meeting
 router.post('/create', async (req, res) => {
   try {
     const { title, description, scheduledTime, createdBy } = req.body;
@@ -45,7 +43,6 @@ router.post('/create', async (req, res) => {
   }
 });
 
-// Get meeting details
 router.get('/:meetingId', async (req, res) => {
   try {
     const { meetingId } = req.params;
@@ -79,7 +76,6 @@ router.get('/:meetingId', async (req, res) => {
   }
 });
 
-// Join meeting endpoint
 router.post('/:meetingId/join', async (req, res) => {
   try {
     const { meetingId } = req.params;
@@ -94,7 +90,6 @@ router.post('/:meetingId/join', async (req, res) => {
       });
     }
     
-    // Add participant if not already present
     const existingParticipant = meeting.participants.find(p => p.userId === userId);
     if (!existingParticipant) {
       meeting.participants.push({
@@ -104,7 +99,6 @@ router.post('/:meetingId/join', async (req, res) => {
       });
     }
     
-    // Mark meeting as active if it's the first participant
     if (meeting.status === 'scheduled' && meeting.participants.length === 1) {
       meeting.status = 'active';
       activeMeetings.set(meetingId, meeting);
@@ -130,7 +124,6 @@ router.post('/:meetingId/join', async (req, res) => {
   }
 });
 
-// Leave meeting endpoint
 router.post('/:meetingId/leave', async (req, res) => {
   try {
     const { meetingId } = req.params;
@@ -145,10 +138,8 @@ router.post('/:meetingId/leave', async (req, res) => {
       });
     }
     
-    // Remove participant
     meeting.participants = meeting.participants.filter(p => p.userId !== userId);
     
-    // End meeting if no participants left
     if (meeting.participants.length === 0) {
       meeting.status = 'ended';
       activeMeetings.delete(meetingId);
@@ -167,7 +158,6 @@ router.post('/:meetingId/leave', async (req, res) => {
   }
 });
 
-// Get all active meetings
 router.get('/active/all', async (req, res) => {
   try {
     const activeMeetingsList = Array.from(activeMeetings.values()).map(meeting => ({

@@ -1,4 +1,3 @@
-# Python dependencies for AI service
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
@@ -9,7 +8,6 @@ pydantic==2.5.0
 httpx==0.25.2
 aiofiles==23.2.1
 
-# AI/ML dependencies
 openai==1.3.8
 anthropic==0.7.7
 langchain==0.0.335
@@ -17,16 +15,13 @@ langchain-openai==0.0.2
 numpy==1.25.2
 pandas==2.1.3
 
-# Audio processing (for transcription)
 whisper==1.1.10
 speechrecognition==3.10.0
 pyaudio==0.2.11
 
-# Database (if needed)
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
 alembic==1.13.1
 
-# Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1 

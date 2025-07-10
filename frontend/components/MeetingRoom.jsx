@@ -18,14 +18,10 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   const [localStream, setLocalStream] = useState(roomData.stream);
 
   useEffect(() => {
-    // Initialize socket connection
     initializeSocket();
-    
-    // Set up local video
     setupLocalVideo();
 
     return () => {
-      // Cleanup on unmount
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
@@ -36,7 +32,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
     };
   }, []);
 
-  // Separate effect to handle local video setup
   useEffect(() => {
     setupLocalVideo();
   }, [localStream]);
@@ -46,7 +41,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
       console.log('Setting up local video stream:', localStream);
       localVideoRef.current.srcObject = localStream;
       
-      // Ensure video tracks are enabled according to current state
       const videoTrack = localStream.getVideoTracks()[0];
       const audioTrack = localStream.getAudioTracks()[0];
       
@@ -65,7 +59,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
         streamTracks: localStream ? localStream.getTracks().length : 0
       });
       
-      // If no stream is available, try to get a new one
       if (!localStream && localVideoRef.current) {
         try {
           console.log('Attempting to get new media stream...');
@@ -87,7 +80,7 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
 
     socketRef.current.on('connect', () => {
       console.log('Connected to server');
-      // Join the meeting room
+
       socketRef.current.emit('join-meeting', {
         roomId: roomData.roomId,
         userId: roomData.userId,
@@ -103,7 +96,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
       console.log('User joined:', userData);
       setParticipants(prev => [...prev, userData]);
       
-      // Create peer connection for new user
       await createPeerConnection(userData.socketId, true);
     });
 
@@ -116,7 +108,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
         return newStreams;
       });
       
-      // Close peer connection
       if (peerConnectionsRef.current[userData.socketId]) {
         peerConnectionsRef.current[userData.socketId].close();
         delete peerConnectionsRef.current[userData.socketId];
@@ -140,7 +131,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
     });
 
     socketRef.current.on('user-media-state-change', (data) => {
-      // Handle when other users turn on/off their video/audio
       console.log('User media state changed:', data);
     });
   };
@@ -152,14 +142,12 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
 
     peerConnectionsRef.current[socketId] = peerConnection;
 
-    // Add local stream to peer connection
     if (localStream) {
       localStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, localStream);
       });
     }
 
-    // Handle remote stream
     peerConnection.ontrack = (event) => {
       setRemoteStreams(prev => ({
         ...prev,
@@ -167,7 +155,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
       }));
     };
 
-    // Handle ICE candidates
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         socketRef.current.emit('webrtc-ice-candidate', {
@@ -178,7 +165,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
     };
 
     if (isInitiator) {
-      // Create and send offer
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       
@@ -233,7 +219,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
         videoTrack.enabled = !isVideoEnabled;
         setIsVideoEnabled(!isVideoEnabled);
         
-        // Notify other participants
         socketRef.current.emit('media-state-change', {
           isVideoEnabled: !isVideoEnabled,
           isAudioEnabled
@@ -249,7 +234,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
         audioTrack.enabled = !isAudioEnabled;
         setIsAudioEnabled(!isAudioEnabled);
         
-        // Notify other participants
         socketRef.current.emit('media-state-change', {
           isVideoEnabled,
           isAudioEnabled: !isAudioEnabled
@@ -261,13 +245,11 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   const toggleScreenShare = async () => {
     try {
       if (!isScreenSharing) {
-        // Start screen sharing
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: true
         });
         
-        // Replace video track in all peer connections
         const videoTrack = screenStream.getVideoTracks()[0];
         Object.values(peerConnectionsRef.current).forEach(pc => {
           const sender = pc.getSenders().find(s => 
@@ -278,14 +260,12 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
           }
         });
         
-        // Update local video
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
         }
         
         setIsScreenSharing(true);
         
-        // Handle screen share ending
         videoTrack.onended = () => {
           stopScreenShare();
         };
@@ -298,14 +278,12 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   };
 
   const stopScreenShare = async () => {
-    // Go back to camera
     try {
       const cameraStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true
       });
       
-      // Replace video track in all peer connections
       const videoTrack = cameraStream.getVideoTracks()[0];
       Object.values(peerConnectionsRef.current).forEach(pc => {
         const sender = pc.getSenders().find(s => 
@@ -316,7 +294,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
         }
       });
       
-      // Update local video
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = cameraStream;
       }
@@ -338,7 +315,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   };
 
   const handleLeaveMeeting = async () => {
-    // Leave meeting on backend
     try {
       await fetch(`http://localhost:3001/api/meetings/${roomData.meetingDetails.id}/leave`, {
         method: 'POST',
@@ -353,7 +329,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
       console.error('Error leaving meeting:', error);
     }
     
-    // Cleanup and redirect
     if (socketRef.current) {
       socketRef.current.disconnect();
     }
@@ -374,7 +349,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      {/* Header */}
       <div className="bg-gray-800 px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-white font-semibold text-lg">
@@ -408,10 +382,8 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
       </div>
 
       <div className="flex-1 flex">
-        {/* Main Video Area */}
         <div className="flex-1 p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 h-full">
-            {/* Local Video */}
             <div className="relative bg-black rounded-lg overflow-hidden">
               {isVideoEnabled ? (
                 <video
@@ -438,7 +410,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
               </div>
             </div>
 
-            {/* Remote Videos */}
             {Object.entries(remoteStreams).map(([socketId, stream]) => {
               const participant = participants.find(p => p.socketId === socketId);
               return (
@@ -462,7 +433,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
           </div>
         </div>
 
-        {/* Chat Sidebar */}
         {isChatOpen && (
           <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
             <div className="p-4 border-b border-gray-200">
@@ -507,7 +477,6 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
         )}
       </div>
 
-      {/* Bottom Controls */}
       <div className="bg-gray-800 px-6 py-4">
         <div className="flex items-center justify-center space-x-4">
           <button

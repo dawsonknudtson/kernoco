@@ -10,7 +10,7 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
+      
       <header className="px-6 py-4">
         <nav className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -44,7 +44,7 @@ const Landing = () => {
         </nav>
       </header>
 
-      {/* Hero Section */}
+     
       <section className="px-6 py-20">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
@@ -69,7 +69,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Features Section */}
+     
       <section id="features" className="px-6 py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -121,7 +121,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
+      
       <section className="px-6 py-20">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-gray-900 mb-6">
@@ -142,7 +142,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Footer */}
+      
       <footer className="px-6 py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
@@ -168,7 +168,7 @@ const Landing = () => {
         </div>
       </footer>
 
-      {/* Auth Modal */}
+      
       <AuthModal isOpen={isAuthModalOpen} onClose={closeAuthModal} />
     </div>
   );

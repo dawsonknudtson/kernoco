@@ -20,7 +20,6 @@ const AuthModal = ({ isOpen, onClose }) => {
       ...prev,
       [name]: value
     }));
-    // clear error when user starts typing
     if (error) setError('');
   };
 
@@ -34,7 +33,6 @@ const AuthModal = ({ isOpen, onClose }) => {
         const result = await signUpUser(formData.email, formData.password, formData.confirmPassword);
         
         if (result.success) {
-          // signup successful - redirect to dashboard
           onClose();
           router.push('/dashboard');
         } else {
@@ -70,7 +68,7 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   const handleGoogleSignIn = async () => {
     try {
-      setError(''); // Clear any previous errors
+      setError(''); 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -80,9 +78,9 @@ const AuthModal = ({ isOpen, onClose }) => {
 
       if (error) throw error;
       
-      // If successful, redirect to dashboard
+      
       router.push('/dashboard');
-      onClose(); // Close the modal
+      onClose(); 
     } catch (error) {
       console.error('Error signing in with Google:', error.message);
       setError('An error occurred. Please try again.');
@@ -94,7 +92,7 @@ const AuthModal = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md relative">
-        {/* Error/Success Message */}
+
         {error && (
           <div className={`border px-4 py-3 rounded relative mb-4 mx-4 mt-4 ${
             error.includes('Check your email') || error.includes('verification')
@@ -105,7 +103,7 @@ const AuthModal = ({ isOpen, onClose }) => {
           </div>
         )}
         
-        {/* Close button */}
+        {}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
@@ -116,7 +114,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         </button>
 
         <div className="p-8">
-          {/* Header */}
+          
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
               {isSignUp ? 'Create Account' : 'Welcome Back'}
@@ -129,7 +127,7 @@ const AuthModal = ({ isOpen, onClose }) => {
             </p>
           </div>
 
-          {/* Google Sign In */}
+          
           <button 
             onClick={handleGoogleSignIn}
             className="w-full bg-white border-2 border-gray-300 rounded-lg px-4 py-3 flex items-center justify-center gap-3 hover:border-gray-400 transition-colors mb-6"
@@ -145,7 +143,7 @@ const AuthModal = ({ isOpen, onClose }) => {
             </span>
           </button>
 
-          {/* Divider */}
+          
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
@@ -155,9 +153,9 @@ const AuthModal = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* Form */}
+          
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
+            
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
@@ -174,7 +172,7 @@ const AuthModal = ({ isOpen, onClose }) => {
               />
             </div>
 
-            {/* Password */}
+            
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
@@ -191,7 +189,7 @@ const AuthModal = ({ isOpen, onClose }) => {
               />
             </div>
 
-            {/* Confirm Password (Sign Up only) */}
+           
             {isSignUp && (
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
@@ -210,7 +208,7 @@ const AuthModal = ({ isOpen, onClose }) => {
               </div>
             )}
 
-            {/* Forgot Password (Login only) */}
+            
             {!isSignUp && (
               <div className="text-right">
                 <a href="#" className="text-sm text-blue-600 hover:text-blue-700 transition-colors">
@@ -219,7 +217,7 @@ const AuthModal = ({ isOpen, onClose }) => {
               </div>
             )}
 
-            {/* Submit Button */}
+            
             <button
               type="submit"
               disabled={loading}
@@ -236,7 +234,7 @@ const AuthModal = ({ isOpen, onClose }) => {
             </button>
           </form>
 
-          {/* Toggle between Sign Up and Login */}
+          
           <div className="text-center mt-6">
             <p className="text-gray-600">
               {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
@@ -249,7 +247,7 @@ const AuthModal = ({ isOpen, onClose }) => {
             </p>
           </div>
 
-          {/* Terms (Sign Up only) */}
+          
           {isSignUp && (
             <div className="text-center mt-4">
               <p className="text-xs text-gray-500">

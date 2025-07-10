@@ -13,13 +13,10 @@ export default function MeetingJoinScreen({ meetingId, onJoin, onCancel }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Get user media on component mount
     initializeCamera();
-    // Fetch meeting details
     fetchMeetingDetails();
 
     return () => {
-      // Cleanup stream when component unmounts
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
@@ -105,7 +102,6 @@ export default function MeetingJoinScreen({ meetingId, onJoin, onCancel }) {
         console.log('Joining meeting with stream:', stream);
         console.log('Stream tracks:', stream ? stream.getTracks() : 'No stream');
         
-        // Pass the stream and user data to parent component
         onJoin({
           roomId: data.roomId,
           userName: displayName.trim(),
@@ -137,7 +133,6 @@ export default function MeetingJoinScreen({ meetingId, onJoin, onCancel }) {
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         <div className="grid md:grid-cols-2 gap-8 items-center">
-          {/* Video Preview Section */}
           <div className="relative">
             <div className="bg-black rounded-lg overflow-hidden aspect-video relative">
               {stream && (
@@ -163,7 +158,6 @@ export default function MeetingJoinScreen({ meetingId, onJoin, onCancel }) {
                 </div>
               )}
 
-              {/* Video Controls Overlay */}
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4">
                 <button
                   onClick={toggleVideo}
@@ -202,7 +196,6 @@ export default function MeetingJoinScreen({ meetingId, onJoin, onCancel }) {
             </div>
           </div>
 
-          {/* Meeting Join Form */}
           <div className="bg-white rounded-lg p-8">
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -273,7 +266,6 @@ export default function MeetingJoinScreen({ meetingId, onJoin, onCancel }) {
               </div>
             </div>
 
-            {/* Device Status */}
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center space-x-4">

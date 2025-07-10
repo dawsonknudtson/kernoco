@@ -8,12 +8,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
 
-  // Calendar state
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showMeetingForm, setShowMeetingForm] = useState(false);
   
-  // Meeting form state
   const [meetingForm, setMeetingForm] = useState({
     title: '',
     time: '',
@@ -21,7 +19,6 @@ export default function Dashboard() {
     invitees: ['']
   });
   
-  // Mock data for demonstration - now dynamic
   const [bookedMeetings, setBookedMeetings] = useState([]);
 
   const [meetingInvitations] = useState([
@@ -57,7 +54,6 @@ export default function Dashboard() {
     }
   };
 
-  // Get user display name
   const getUserDisplayName = () => {
     if (!user) return '';
     
@@ -69,7 +65,6 @@ export default function Dashboard() {
     return fullName || '';
   };
 
-  // Calendar helper functions
   const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   };
@@ -87,12 +82,10 @@ export default function Dashboard() {
     const firstDay = getFirstDayOfMonth(currentDate);
     const days = [];
 
-    // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(null);
     }
 
-    // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(day);
     }
@@ -102,10 +95,8 @@ export default function Dashboard() {
 
   const handleInvitationResponse = (invitationId, response) => {
     console.log(`${response} invitation ${invitationId}`);
-    // This will be connected to backend later
   };
 
-  // Handle calendar date click
   const handleDateClick = (day) => {
     if (!day) return;
     
@@ -114,7 +105,6 @@ export default function Dashboard() {
     setShowMeetingForm(true);
   };
 
-  // Handle meeting form changes
   const handleMeetingFormChange = (field, value) => {
     setMeetingForm(prev => ({
       ...prev,
@@ -122,7 +112,6 @@ export default function Dashboard() {
     }));
   };
 
-  // Add new invitee field
   const addInviteeField = () => {
     setMeetingForm(prev => ({
       ...prev,
@@ -130,7 +119,6 @@ export default function Dashboard() {
     }));
   };
 
-  // Remove invitee field
   const removeInviteeField = (index) => {
     setMeetingForm(prev => ({
       ...prev,
@@ -138,7 +126,6 @@ export default function Dashboard() {
     }));
   };
 
-  // Update specific invitee
   const updateInvitee = (index, value) => {
     setMeetingForm(prev => ({
       ...prev,
@@ -146,10 +133,8 @@ export default function Dashboard() {
     }));
   };
 
-  // Handle form submission
   const handleCreateMeeting = async () => {
     try {
-      // Create meeting on backend
       const response = await fetch('http://localhost:3001/api/meetings/create', {
         method: 'POST',
         headers: {
@@ -177,7 +162,6 @@ export default function Dashboard() {
           roomId: data.meeting.roomId
         };
         
-        // Add to booked meetings
         setBookedMeetings(prev => [...prev, newMeeting]);
         
         console.log('Meeting created:', newMeeting);
@@ -188,7 +172,6 @@ export default function Dashboard() {
       console.error('Error creating meeting:', error);
     }
     
-    // Reset form
     setMeetingForm({
       title: '',
       time: '',
@@ -199,7 +182,6 @@ export default function Dashboard() {
     setSelectedDate(null);
   };
 
-  // Cancel meeting creation
   const handleCancelMeeting = () => {
     setMeetingForm({
       title: '',
@@ -211,7 +193,6 @@ export default function Dashboard() {
     setSelectedDate(null);
   };
 
-  // Format selected date for display
   const formatSelectedDate = (date) => {
     return date.toLocaleDateString('en-US', { 
       weekday: 'long', 
@@ -221,7 +202,6 @@ export default function Dashboard() {
     });
   };
 
-  // Format meeting date for display
   const formatMeetingDate = (date) => {
     const today = new Date();
     const tomorrow = new Date(today);
@@ -240,13 +220,11 @@ export default function Dashboard() {
     }
   };
 
-  // Handle joining a meeting
   const handleJoinMeeting = (meetingId) => {
     console.log('Joining meeting:', meetingId);
     router.push(`/meeting/${meetingId}`);
   };
 
-  // Handle canceling a meeting from the list
   const handleCancelBookedMeeting = (meetingId) => {
     setBookedMeetings(prev => prev.filter(meeting => meeting.id !== meetingId));
     console.log('Meeting canceled:', meetingId);
@@ -264,7 +242,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
       <div className="w-64 bg-white shadow-lg">
         <div className="p-6 border-b">
           <h1 className="text-2xl font-bold text-blue-600">Kernoco</h1>
@@ -331,7 +308,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 p-8">
         {activeSection === 'dashboard' && (
           <div>
@@ -343,7 +319,6 @@ export default function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Calendar Section */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -403,7 +378,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Meeting Creation Form */}
                 {showMeetingForm && selectedDate && (
                   <div className="mt-6 bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
                     <div className="flex justify-between items-center mb-4">
@@ -421,7 +395,6 @@ export default function Dashboard() {
                     </div>
 
                     <div className="space-y-4">
-                      {/* Meeting Title */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Meeting Title *
@@ -435,7 +408,6 @@ export default function Dashboard() {
                         />
                       </div>
 
-                      {/* Meeting Time */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Time *
@@ -448,7 +420,6 @@ export default function Dashboard() {
                         />
                       </div>
 
-                      {/* Description */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Description
@@ -462,7 +433,6 @@ export default function Dashboard() {
                         />
                       </div>
 
-                      {/* Invitees */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Invite People
@@ -501,7 +471,6 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {/* Action Buttons */}
                       <div className="flex justify-end space-x-3 pt-4 border-t">
                         <button
                           onClick={handleCancelMeeting}
@@ -522,9 +491,7 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Right Side Content */}
               <div className="lg:col-span-2 space-y-8">
-                {/* Booked Meetings */}
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Meetings</h3>
                   <div className="space-y-3">
@@ -571,7 +538,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Meeting Invitations */}
                 <div className="bg-white rounded-lg shadow-md p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Meeting Invitations</h3>
                   <div className="space-y-3">

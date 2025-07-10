@@ -7,7 +7,7 @@ import MeetingRoom from '../../components/MeetingRoom';
 export default function MeetingPage() {
   const router = useRouter();
   const { meetingId } = router.query;
-  const [currentView, setCurrentView] = useState('join'); // 'join' or 'meeting'
+  const [currentView, setCurrentView] = useState('join'); 
   const [roomData, setRoomData] = useState(null);
 
   const handleJoinMeeting = (data) => {
