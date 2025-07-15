@@ -25,9 +25,82 @@ export default function Dashboard() {
     
   ]);
 
+  const [recordings, setRecordings] = useState([]);
+  const [loadingRecordings, setLoadingRecordings] = useState(false);
+
   useEffect(() => {
     checkUser();
   }, []);
+
+  useEffect(() => {
+    if (activeSection === 'history') {
+      fetchRecordings();
+    }
+  }, [activeSection]);
+
+  const fetchRecordings = async () => {
+    setLoadingRecordings(true);
+    try {
+      console.log('Fetching recordings...');
+      const response = await fetch('http://localhost:3001/api/meetings/recordings');
+      const data = await response.json();
+      
+      console.log('Recordings fetch response:', data);
+      
+      if (data.success) {
+        console.log('Recordings fetched successfully:', data.recordings);
+        setRecordings(data.recordings);
+      } else {
+        console.error('Failed to fetch recordings:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching recordings:', error);
+    } finally {
+      setLoadingRecordings(false);
+    }
+  };
+
+  const handleDownloadRecording = async (recordingId, filename) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/meetings/recording/${recordingId}/download`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Failed to download recording');
+      }
+    } catch (error) {
+      console.error('Error downloading recording:', error);
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDuration = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+  };
 
   const checkUser = async () => {
     try {
@@ -580,9 +653,91 @@ export default function Dashboard() {
         )}
 
         {activeSection === 'history' && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Meeting History</h2>
-            <p className="text-gray-600">Previous meeting history will be displayed here.</p>
+          <div>
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-gray-900">Meeting History</h2>
+              <p className="text-gray-600 mt-2">Download and review your recorded meetings.</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Recorded Meetings</h3>
+                  <button
+                    onClick={fetchRecordings}
+                    disabled={loadingRecordings}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {loadingRecordings ? 'Loading...' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                {loadingRecordings ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : recordings.length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No recordings yet</h3>
+                    <p className="text-gray-600">Meeting recordings will appear here when you have meetings with participants.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recordings.map((recording) => (
+                      <div key={recording.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{recording.title}</h4>
+                            <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
+                              <span className="flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {formatDuration(recording.duration)}
+                              </span>
+                              <span className="flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                {formatFileSize(recording.size)}
+                              </span>
+                              <span className="flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 8V9a2 2 0 012-2h4a2 2 0 012 2v6m-6 2V9a2 2 0 012-2h4a2 2 0 012 2v6" />
+                                </svg>
+                                {new Date(recording.createdAt).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleDownloadRecording(recording.id, `${recording.title}.webm`)}
+                              className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              Download
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

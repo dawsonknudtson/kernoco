@@ -7,6 +7,8 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   const localVideoRef = useRef(null);
   const socketRef = useRef(null);
   const peerConnectionsRef = useRef({});
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
   const [remoteStreams, setRemoteStreams] = useState({});
   const [participants, setParticipants] = useState([]);
   const [isVideoEnabled, setIsVideoEnabled] = useState(roomData.isVideoEnabled);
@@ -16,12 +18,15 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   const [newMessage, setNewMessage] = useState('');
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [localStream, setLocalStream] = useState(roomData.stream);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingStartTime, setRecordingStartTime] = useState(null);
 
   useEffect(() => {
     initializeSocket();
     setupLocalVideo();
 
     return () => {
+      stopRecording();
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
@@ -36,10 +41,141 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
     setupLocalVideo();
   }, [localStream]);
 
+  // Additional effect to ensure video setup after component is fully mounted
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (roomData.stream && !localStream) {
+        console.log('Setting stream from roomData:', roomData.stream);
+        setLocalStream(roomData.stream);
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [roomData.stream, localStream]);
+
+  // Start recording when participants join (meeting becomes active)
+  useEffect(() => {
+    if (participants.length > 0 && !isRecording) {
+      // Don't automatically start screen recording - it interferes with camera
+      // startRecording();
+    } else if (participants.length === 0 && isRecording) {
+      stopRecording();
+    }
+  }, [participants.length, isRecording]);
+
+  const startRecording = async () => {
+    try {
+      console.log('Starting meeting recording...');
+      
+      // Instead of forcing screen capture, use the existing local stream
+      // This prevents interference with the normal camera view
+      if (!localStream) {
+        console.log('No local stream available for recording');
+        return;
+      }
+
+      // Create MediaRecorder with the existing local stream
+      mediaRecorderRef.current = new MediaRecorder(localStream, {
+        mimeType: 'video/webm;codecs=vp9,opus'
+      });
+
+      recordedChunksRef.current = [];
+      
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        console.log('Recording stopped, saving...');
+        await saveRecording();
+      };
+
+      mediaRecorderRef.current.start(1000); // Collect data every second
+      setIsRecording(true);
+      setRecordingStartTime(new Date());
+      
+      console.log('Recording started successfully');
+    } catch (error) {
+      console.error('Error starting recording:', error);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (mediaRecorderRef.current && isRecording) {
+      console.log('Stopping recording...');
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setRecordingStartTime(null);
+    }
+  };
+
+  const saveRecording = async () => {
+    if (recordedChunksRef.current.length === 0) {
+      console.log('No recorded data to save');
+      return;
+    }
+
+    console.log('Saving recording...', {
+      chunksCount: recordedChunksRef.current.length,
+      meetingId: roomData.meetingDetails.id,
+      title: roomData.meetingDetails.title,
+      duration: recordingStartTime ? Math.floor((Date.now() - recordingStartTime.getTime()) / 1000) : 0
+    });
+
+    const recordedBlob = new Blob(recordedChunksRef.current, {
+      type: 'video/webm'
+    });
+
+    console.log('Created blob:', { size: recordedBlob.size, type: recordedBlob.type });
+
+    const formData = new FormData();
+    formData.append('recording', recordedBlob, `meeting-${roomData.meetingDetails.id}-${Date.now()}.webm`);
+    formData.append('meetingId', roomData.meetingDetails.id);
+    formData.append('duration', recordingStartTime ? Math.floor((Date.now() - recordingStartTime.getTime()) / 1000) : 0);
+    formData.append('title', roomData.meetingDetails.title || 'Untitled Meeting');
+
+    try {
+      console.log('Sending recording to backend...');
+      const response = await fetch('http://localhost:3001/api/meetings/recording/save', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      console.log('Backend response:', result);
+
+      if (response.ok) {
+        console.log('Recording saved successfully:', result);
+      } else {
+        console.error('Failed to save recording:', result);
+      }
+    } catch (error) {
+      console.error('Error saving recording:', error);
+    }
+  };
+
   const setupLocalVideo = async () => {
+    console.log('Setting up local video...', { 
+      hasRef: !!localVideoRef.current, 
+      hasStream: !!localStream,
+      streamTracks: localStream ? localStream.getTracks().length : 0,
+      isVideoEnabled,
+      isAudioEnabled
+    });
+    
     if (localVideoRef.current && localStream) {
       console.log('Setting up local video stream:', localStream);
       localVideoRef.current.srcObject = localStream;
+      
+      // Ensure video plays
+      try {
+        await localVideoRef.current.play();
+        console.log('Video started playing');
+      } catch (error) {
+        console.log('Video autoplay failed (this is often normal):', error);
+      }
       
       const videoTrack = localStream.getVideoTracks()[0];
       const audioTrack = localStream.getAudioTracks()[0];
@@ -52,26 +188,24 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
         audioTrack.enabled = isAudioEnabled;
         console.log('Audio track enabled:', audioTrack.enabled);
       }
+    } else if (!localStream && localVideoRef.current) {
+      console.log('No stream found, attempting to get new media stream...');
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+        setLocalStream(newStream);
+        console.log('Successfully obtained new stream:', newStream);
+      } catch (error) {
+        console.error('Failed to get media stream:', error);
+      }
     } else {
       console.log('Local video setup failed - missing ref or stream:', {
         hasRef: !!localVideoRef.current,
         hasStream: !!localStream,
         streamTracks: localStream ? localStream.getTracks().length : 0
       });
-      
-      if (!localStream && localVideoRef.current) {
-        try {
-          console.log('Attempting to get new media stream...');
-          const newStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
-          });
-          setLocalStream(newStream);
-          console.log('Successfully obtained new stream:', newStream);
-        } catch (error) {
-          console.error('Failed to get media stream:', error);
-        }
-      }
     }
   };
 
@@ -329,6 +463,11 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
       console.error('Error leaving meeting:', error);
     }
     
+    // Stop recording if active
+    if (isRecording) {
+      await stopRecording();
+    }
+    
     if (socketRef.current) {
       socketRef.current.disconnect();
     }
@@ -359,6 +498,12 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
           </p>
         </div>
         <div className="flex items-center space-x-4">
+          {isRecording && (
+            <div className="flex items-center space-x-2 bg-red-600 text-white px-3 py-1 rounded-full">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">Recording</span>
+            </div>
+          )}
           <button
             onClick={() => setIsChatOpen(!isChatOpen)}
             className="relative p-2 text-gray-300 hover:text-white transition-colors"
@@ -523,6 +668,23 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </button>
+
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`p-3 rounded-full transition-colors ${
+              isRecording 
+                ? 'bg-red-600 hover:bg-red-500 text-white' 
+                : 'bg-gray-700 hover:bg-gray-600 text-white'
+            }`}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isRecording ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              )}
             </svg>
           </button>
 
