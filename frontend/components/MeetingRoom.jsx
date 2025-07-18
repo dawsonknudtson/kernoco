@@ -22,8 +22,12 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   const [recordingStartTime, setRecordingStartTime] = useState(null);
 
   useEffect(() => {
+    // Set the local stream immediately from roomData
+    if (roomData.stream) {
+      setLocalStream(roomData.stream);
+    }
+    
     initializeSocket();
-    setupLocalVideo();
 
     return () => {
       stopRecording();
@@ -38,20 +42,10 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   }, []);
 
   useEffect(() => {
-    setupLocalVideo();
-  }, [localStream]);
-
-  // Additional effect to ensure video setup after component is fully mounted
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (roomData.stream && !localStream) {
-        console.log('Setting stream from roomData:', roomData.stream);
-        setLocalStream(roomData.stream);
-      }
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [roomData.stream, localStream]);
+    if (localStream && localVideoRef.current) {
+      setupLocalVideo();
+    }
+  }, [localStream, isVideoEnabled, isAudioEnabled]);
 
   // Start recording when participants join (meeting becomes active)
   useEffect(() => {
@@ -157,55 +151,35 @@ export default function MeetingRoom({ roomData, onLeaveMeeting }) {
   };
 
   const setupLocalVideo = async () => {
-    console.log('Setting up local video...', { 
-      hasRef: !!localVideoRef.current, 
-      hasStream: !!localStream,
-      streamTracks: localStream ? localStream.getTracks().length : 0,
-      isVideoEnabled,
-      isAudioEnabled
-    });
+    if (!localVideoRef.current || !localStream) {
+      console.log('Missing video ref or stream, skipping setup');
+      return;
+    }
+
+    console.log('Setting up local video stream:', localStream);
     
-    if (localVideoRef.current && localStream) {
-      console.log('Setting up local video stream:', localStream);
-      localVideoRef.current.srcObject = localStream;
-      
-      // Ensure video plays
-      try {
-        await localVideoRef.current.play();
-        console.log('Video started playing');
-      } catch (error) {
-        console.log('Video autoplay failed (this is often normal):', error);
-      }
-      
-      const videoTrack = localStream.getVideoTracks()[0];
-      const audioTrack = localStream.getAudioTracks()[0];
-      
-      if (videoTrack) {
-        videoTrack.enabled = isVideoEnabled;
-        console.log('Video track enabled:', videoTrack.enabled);
-      }
-      if (audioTrack) {
-        audioTrack.enabled = isAudioEnabled;
-        console.log('Audio track enabled:', audioTrack.enabled);
-      }
-    } else if (!localStream && localVideoRef.current) {
-      console.log('No stream found, attempting to get new media stream...');
-      try {
-        const newStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
-        });
-        setLocalStream(newStream);
-        console.log('Successfully obtained new stream:', newStream);
-      } catch (error) {
-        console.error('Failed to get media stream:', error);
-      }
-    } else {
-      console.log('Local video setup failed - missing ref or stream:', {
-        hasRef: !!localVideoRef.current,
-        hasStream: !!localStream,
-        streamTracks: localStream ? localStream.getTracks().length : 0
-      });
+    // Set the video source
+    localVideoRef.current.srcObject = localStream;
+    
+    // Update track states
+    const videoTrack = localStream.getVideoTracks()[0];
+    const audioTrack = localStream.getAudioTracks()[0];
+    
+    if (videoTrack) {
+      videoTrack.enabled = isVideoEnabled;
+      console.log('Video track enabled:', videoTrack.enabled);
+    }
+    if (audioTrack) {
+      audioTrack.enabled = isAudioEnabled;
+      console.log('Audio track enabled:', audioTrack.enabled);
+    }
+
+    // Ensure video plays (catch and ignore autoplay policy errors)
+    try {
+      await localVideoRef.current.play();
+      console.log('Video started playing');
+    } catch (error) {
+      console.log('Video autoplay prevented by browser policy (normal behavior)');
     }
   };
 
